@@ -105,6 +105,7 @@ double (^fade)(Fade, double, double) = ^double(Fade fadeType, double x, double f
     static void (^block)(void);
     block = ^void(void)
     {
+        // Package audio buffers in a struct
         AudioBuffers * audio_buffers = malloc(sizeof(AudioBuffers));
         audio_buffers->buffer1 = createAudioBuffer((Fade)self->alternate_channel_flag, (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency), (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency));
         audio_buffers->buffer2 = createAudioBuffer((Fade)self->alternate_channel_flag, (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency), (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency));
