@@ -241,18 +241,21 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
             ClicklessTones *tones = [[ClicklessTones alloc] init];
             [ToneBarrierPlayer.context setPlayer:(id<ToneBarrierPlayerDelegate> _Nonnull)tones];
             [ToneBarrierPlayer.context createAudioBufferWithFormat:[self->_mixerNode outputFormatForBus:0] completionBlock:^(AudioBuffers * audio_buffers/* AVAudioPCMBuffer * _Nonnull buffer1, AVAudioPCMBuffer * _Nonnull buffer2, */, PlayToneCompletionBlock playToneCompletionBlock) {
-
+                // Audio buffers are returned in a struct
                 [self->_playerOneNode scheduleBuffer:audio_buffers->buffer1 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
 //                    if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
 //                        playToneCompletionBlock();
-                    
+                    // Null the audio buffer to force garbage collection
                     audio_buffers->buffer1 = nil;
                 }];
                 
                 [self->_playerTwoNode scheduleBuffer:audio_buffers->buffer2 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
                     if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
+                    {
+                        // Null the audio buffer to force garbage collection
                         audio_buffers->buffer2 = nil;
                         playToneCompletionBlock();
+                    }
                     //                NSLog(@"Calling playToneCompletionBlock 2...");
                 }];
                 
