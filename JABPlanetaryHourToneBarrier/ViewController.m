@@ -38,6 +38,8 @@
 
 @implementation ViewController
 
+
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     
@@ -521,43 +523,78 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
     });
 }
 
+//- (void)handleInterruption:(NSNotification *)notification
+//{
+//    _wasPlaying = ([ToneGenerator.sharedGenerator.audioEngine isRunning]) ? TRUE : FALSE;
+//    NSLog(@"%s\n\nAudioEngine running == %@\n\n", __PRETTY_FUNCTION__, (_wasPlaying) ? @"TRUE" : @"FALSE");
+//    NSDictionary *userInfo = [notification userInfo];
+//
+//    if ([ToneGenerator.sharedGenerator.audioEngine isRunning])
+//    {
+//        NSInteger typeValue = [[userInfo objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
+//        AVAudioSessionInterruptionType type = (AVAudioSessionInterruptionType)typeValue;
+//        if (type)
+//        {
+//            if (type == AVAudioSessionInterruptionTypeBegan)
+//            {
+//                if (_wasPlaying)
+//                {
+//                    [ToneGenerator.sharedGenerator stop];
+//                    [self.playButton setImage:[UIImage systemImageNamed:@"pause"] forState:UIControlStateNormal];
+//                }
+//            } else if (type == AVAudioSessionInterruptionTypeEnded)
+//            {
+////                NSInteger optionsValue = [[userInfo objectForKey:AVAudioSessionInterruptionOptionKey] unsignedIntegerValue];
+////                AVAudioSessionInterruptionOptions options = (AVAudioSessionInterruptionOptions)optionsValue;
+////                if (options == AVAudioSessionInterruptionOptionShouldResume)
+////                {
+//                if (_wasPlaying)
+//                {
+//                    [ToneGenerator.sharedGenerator start];
+//                    [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
+//                }
+////                }
+//            }
+//        }
+//    }
+//
+//    [self updateWatchConnectivityStatus];
+//    [self updateDeviceStatus];
+//}
+
+
 - (void)handleInterruption:(NSNotification *)notification
 {
-    _wasPlaying = ([ToneGenerator.sharedGenerator.audioEngine isRunning]) ? TRUE : FALSE;
-    
-    NSDictionary *userInfo = [notification userInfo];
-    
-    if ([ToneGenerator.sharedGenerator.audioEngine isRunning])
+    UInt8 interruptionType = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
+    NSLog(@"%s\n\n\t\t\tinterruptionType == %d\n\n", __PRETTY_FUNCTION__, interruptionType);
+
+    if (interruptionType == AVAudioSessionInterruptionTypeBegan && ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == TRUE)
     {
-        NSInteger typeValue = [[userInfo objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
-        AVAudioSessionInterruptionType type = (AVAudioSessionInterruptionType)typeValue;
-        if (type)
+        NSLog(@"AVAudioSessionInterruptionTypeBegan");
+        // if playing, stop audio engine and then set the volume to 1.0
+//        [self play:[self playButton]];
+        [ToneGenerator.sharedGenerator.audioEngine.mainMixerNode setOutputVolume:1.0];
+    } else if (interruptionType == AVAudioSessionInterruptionTypeEnded)
+    {
+        if (ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == FALSE)
         {
-            if (type == AVAudioSessionInterruptionTypeBegan)
-            {
-                if (_wasPlaying)
-                {
-                    [ToneGenerator.sharedGenerator stop];
-                    [self.playButton setImage:[UIImage systemImageNamed:@"pause"] forState:UIControlStateNormal];
-                }
-            } else if (type == AVAudioSessionInterruptionTypeEnded)
-            {
-//                NSInteger optionsValue = [[userInfo objectForKey:AVAudioSessionInterruptionOptionKey] unsignedIntegerValue];
-//                AVAudioSessionInterruptionOptions options = (AVAudioSessionInterruptionOptions)optionsValue;
-//                if (options == AVAudioSessionInterruptionOptionShouldResume)
-//                {
-                if (_wasPlaying)
-                {
-                    [ToneGenerator.sharedGenerator start];
-                    [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
-                }
-//                }
-            }
+            NSLog(@"Resuming playback...");
+//            [self.delegate play:[self.delegate playButton]];
         }
+        NSLog(@"AVAudioSessionInterruptionTypeEnded");
     }
-    
-    [self updateWatchConnectivityStatus];
-    [self updateDeviceStatus];
+    AVAudioSessionInterruptionOptions options = [[notification.userInfo valueForKey:AVAudioSessionInterruptionOptionKey] intValue];
+    if (options == AVAudioSessionInterruptionOptionShouldResume)
+    {
+        if (ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == FALSE)
+        {
+            NSLog(@"Resuming playback...");
+//            [self.delegate play:[self.delegate playButton]];
+        }
+        NSLog(@"AVAudioSessionInterruptionOptionShouldResume TRUE");
+    } else {
+        NSLog(@"AVAudioSessionInterruptionOptionShouldResume FALSE");
+    }
 }
 
 @end

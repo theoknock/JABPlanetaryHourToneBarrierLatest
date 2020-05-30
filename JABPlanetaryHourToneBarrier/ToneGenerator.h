@@ -42,7 +42,13 @@ typedef void (^CreateAudioBufferCompletionBlock)(AudioBuffers * audio_buffers, /
 
 @interface ToneGenerator : NSObject
 
-@property (nonatomic, readonly) AVAudioEngine * _Nonnull audioEngine;
+@property (nonatomic, readonly) AVAudioEngine * _Nonnull      audioEngine;
+@property (nonatomic, readonly) AVAudioFormat * _Nullable     audioFormat;
+@property (nonatomic, readonly) AVAudioMixerNode * _Nullable  mainNode;
+@property (nonatomic, readonly) AVAudioMixerNode * _Nullable  mixerNode;
+@property (nonatomic, readonly) AVAudioEnvironmentNode * environmentNode;
+@property (nonatomic, readonly) AVAudioMixerNode * submixer;
+@property (nonatomic, readonly) AVAudioUnitReverb * _Nullable reverb;
 
 + (nonnull ToneGenerator *)sharedGenerator;
 
