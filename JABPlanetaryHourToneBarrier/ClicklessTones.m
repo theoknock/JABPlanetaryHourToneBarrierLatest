@@ -3,7 +3,7 @@
 //  JABPlanetaryHourToneBarrier
 //
 //  Created by James Alan Bush on 12/17/19.
-//  Copyright © 2019 The Life of a Demoniac. All rights reserved.
+//  Copyright © 2019 James Alan Bush. All rights reserved.
 //
 // TO-DO: Blend release of each frequency with the attack of the next using one of three approaches:
 //        1) Send the last frequency with the next when creating the audio buffer and cross-fade (overlap amplitude envelopes)
