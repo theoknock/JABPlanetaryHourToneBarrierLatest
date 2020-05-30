@@ -3,7 +3,7 @@
 //  JABPlanetaryHourToneBarrier
 //
 //  Created by James Alan Bush on 7/8/19.
-//  Copyright © 2019 The Life of a Demoniac. All rights reserved.
+//  Copyright © 2019 James Alan Bush. All rights reserved.
 //
 
 #import <AVFoundation/AVFoundation.h>
