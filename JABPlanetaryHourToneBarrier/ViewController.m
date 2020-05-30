@@ -85,7 +85,6 @@
     [self setupDeviceMonitoring];
     [self activateWatchConnectivitySession];
     [self addStatusObservers];
-    
 }
 
 typedef NS_ENUM(NSUInteger, HeartRateMonitorStatus) {
@@ -503,11 +502,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 - (IBAction)toggleToneGenerator:(UIButton *)sender
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (![ToneGenerator.sharedGenerator.audioEngine isRunning]) {
-            [ToneGenerator.sharedGenerator start];
-        } else if ([ToneGenerator.sharedGenerator.audioEngine isRunning]) {
-            [ToneGenerator.sharedGenerator stop];
-        }
+        [ToneGenerator.sharedGenerator start];
     });
     [self updateDeviceStatus];
 }
@@ -515,9 +510,9 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 - (void)togglePlayButton
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if ([ToneGenerator.sharedGenerator.audioEngine isRunning]) {
+        if (ToneGenerator.sharedGenerator.mainNode.outputVolume != 0.0) {
             [self.playButton setImage:[UIImage systemImageNamed:@"stop"] forState:UIControlStateNormal];
-        } else if (![ToneGenerator.sharedGenerator.audioEngine isRunning]) {
+        } else {
             [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
         }
     });
@@ -585,34 +580,33 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 {
     UInt8 interruptionType = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
     NSLog(@"%s\n\n\t\t\tinterruptionType == %d\n\n", __PRETTY_FUNCTION__, interruptionType);
-
-    if (interruptionType == AVAudioSessionInterruptionTypeBegan && ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == TRUE)
+    
+    // AVAudioSessionInterruptionTypeBegan means that the audio session was running before it was interrupted;
+    // also, test the main mixer node output volume for a value greater than 0 to double-check that a tone barrier score was playing prior to interruption;
+    
+    // instead of setting the main mixer node output volume to 0 as when stopping playback, keep it at its current volume (> 0.0);
+    // When the interruption ends, test the value of volume property for a value greater than 0:
+    // if 1, restart the tone barrier; if 0, do nothing
+    if (interruptionType == AVAudioSessionInterruptionTypeBegan)
     {
         NSLog(@"AVAudioSessionInterruptionTypeBegan");
-        // if playing, stop audio engine and then set the volume to 1.0
-//        [self play:[self playButton]];
-//        [ToneGenerator.sharedGenerator.audioEngine.mainMixerNode setOutputVolume:1.0];
+        if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
+        {
+            float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
+            [ToneGenerator.sharedGenerator stop];
+            [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
+        }
     } else if (interruptionType == AVAudioSessionInterruptionTypeEnded)
     {
-        if (ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == FALSE)
-        {
-            NSLog(@"Resuming playback...");
-//            [self.delegate play:[self.delegate playButton]];
-        }
         NSLog(@"AVAudioSessionInterruptionTypeEnded");
-    }
-    AVAudioSessionInterruptionOptions options = [[notification.userInfo valueForKey:AVAudioSessionInterruptionOptionKey] intValue];
-    if (options == AVAudioSessionInterruptionOptionShouldResume)
-    {
-        if (ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == FALSE)
+        if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
         {
-            NSLog(@"Resuming playback...");
-//            [self.delegate play:[self.delegate playButton]];
+            float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
+            [ToneGenerator.sharedGenerator start];
+            [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
         }
-        NSLog(@"AVAudioSessionInterruptionOptionShouldResume TRUE");
-    } else {
-        NSLog(@"AVAudioSessionInterruptionOptionShouldResume FALSE");
     }
+    //    AV
 }
 
 @end

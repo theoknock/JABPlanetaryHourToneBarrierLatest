@@ -298,7 +298,8 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
         [_audioEngine detachNode:_playerTwoNode];
         _playerTwoNode  = nil;
         
-
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
+        
     } else {
         if ([self startEngine])
         {
@@ -322,6 +323,8 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
             
             if (![_playerOneNode isPlaying]) [_playerOneNode play];
             if (![_playerTwoNode isPlaying]) [_playerTwoNode play];
+            
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
             
             ClicklessTones *tones = [[ClicklessTones alloc] init];
                         [ToneBarrierPlayer.context setPlayer:(id<ToneBarrierPlayerDelegate> _Nonnull)tones];
