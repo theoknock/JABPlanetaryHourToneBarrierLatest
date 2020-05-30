@@ -581,19 +581,13 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
     UInt8 interruptionType = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
     NSLog(@"%s\n\n\t\t\tinterruptionType == %d\n\n", __PRETTY_FUNCTION__, interruptionType);
     
-    // AVAudioSessionInterruptionTypeBegan means that the audio session was running before it was interrupted;
-    // also, test the main mixer node output volume for a value greater than 0 to double-check that a tone barrier score was playing prior to interruption;
-    
-    // instead of setting the main mixer node output volume to 0 as when stopping playback, keep it at its current volume (> 0.0);
-    // When the interruption ends, test the value of volume property for a value greater than 0:
-    // if 1, restart the tone barrier; if 0, do nothing
     if (interruptionType == AVAudioSessionInterruptionTypeBegan)
     {
         NSLog(@"AVAudioSessionInterruptionTypeBegan");
         if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
         {
             float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
-            [ToneGenerator.sharedGenerator stop];
+            [ToneGenerator.sharedGenerator start];
             [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
         }
     } else if (interruptionType == AVAudioSessionInterruptionTypeEnded)
