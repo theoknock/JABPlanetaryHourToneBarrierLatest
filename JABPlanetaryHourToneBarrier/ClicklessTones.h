@@ -2,7 +2,7 @@
 //  ClicklessTones.h
 //  JABPlanetaryHourToneBarrier
 //
-//  Created by Xcode Developer on 12/17/19.
+//  Created by James Alan Bush on 12/17/19.
 //  Copyright © 2019 The Life of a Demoniac. All rights reserved.
 //
 

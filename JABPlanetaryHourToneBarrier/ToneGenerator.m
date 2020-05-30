@@ -2,7 +2,7 @@
 //  ToneGenerator.m
 //  JABPlanetaryHourToneBarrier
 //
-//  Created by Xcode Developer on 7/8/19.
+//  Created by James Alan Bush on 7/8/19.
 //  Copyright © 2019 The Life of a Demoniac. All rights reserved.
 //
 

@@ -562,6 +562,24 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 //    [self updateDeviceStatus];
 //}
 
+// BELOW: CONSOLE OUTPUT DURING INCOMING CALL AND AFTER CALL WAS IGNORED
+
+// INCOMING CALL...
+//2020-05-30 12:28:01.796970-0400 JABPlanetaryHourToneBarrier[1585:269519] -[ViewController handleInterruption:]
+//
+//            interruptionType == 1 // 1 == should not resume audio session
+//2020-05-30 12:28:01.797091-0400 JABPlanetaryHourToneBarrier[1585:269519] AVAudioSessionInterruptionTypeBegan
+//2020-05-30 12:28:01.797162-0400 JABPlanetaryHourToneBarrier[1585:269519] AVAudioSessionInterruptionOptionShouldResume FALSE
+//2020-05-30 12:28:01.812996-0400 JABPlanetaryHourToneBarrier[1585:269519] -[AppDelegate applicationWillResignActive:]
+
+// CALL TERMINATED...
+//2020-05-30 12:28:21.707426-0400 JABPlanetaryHourToneBarrier[1585:269519] -[ViewController handleInterruption:]
+//
+//            interruptionType == 0 // 0 == should resume audio session
+//2020-05-30 12:28:21.707577-0400 JABPlanetaryHourToneBarrier[1585:269519] Resuming playback...
+//2020-05-30 12:28:21.707633-0400 JABPlanetaryHourToneBarrier[1585:269519] AVAudioSessionInterruptionTypeEnded
+//2020-05-30 12:28:21.707686-0400 JABPlanetaryHourToneBarrier[1585:269519] Resuming playback...
+//2020-05-30 12:28:21.707756-0400 JABPlanetaryHourToneBarrier[1585:269519] AVAudioSessionInterruptionOptionShouldResume TRUE
 
 - (void)handleInterruption:(NSNotification *)notification
 {
@@ -573,7 +591,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
         NSLog(@"AVAudioSessionInterruptionTypeBegan");
         // if playing, stop audio engine and then set the volume to 1.0
 //        [self play:[self playButton]];
-        [ToneGenerator.sharedGenerator.audioEngine.mainMixerNode setOutputVolume:1.0];
+//        [ToneGenerator.sharedGenerator.audioEngine.mainMixerNode setOutputVolume:1.0];
     } else if (interruptionType == AVAudioSessionInterruptionTypeEnded)
     {
         if (ToneGenerator.sharedGenerator.audioEngine.mainMixerNode.outputVolume > 0.0 && ToneGenerator.sharedGenerator.audioEngine.isRunning == FALSE)
