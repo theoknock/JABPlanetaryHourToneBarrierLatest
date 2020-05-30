@@ -587,7 +587,12 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
         if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
         {
             float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
-            [ToneGenerator.sharedGenerator start];
+            [ToneGenerator.sharedGenerator start]; // This method is called on the main thread--the same thread on which this
+                                                   // entire method runs; calling it will block the main thread and
+                                                   // preventing its execution to complete
+                                                   // ALTERNATIVE: Send a "toggle tone barrier generator" notification
+                                                   // that calls [ToneGenerator.sharedGenerator start];
+                                                   // that way, the two methods are called sequentially (vs. concurrently)
             [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
         }
     } else if (interruptionType == AVAudioSessionInterruptionTypeEnded)
@@ -600,7 +605,15 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
             [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
         }
     }
-    //    AV
+    
+    AVAudioSessionInterruptionOptions options = [[notification.userInfo valueForKey:AVAudioSessionInterruptionOptionKey] intValue];
+    if (options == AVAudioSessionInterruptionOptionShouldResume)
+    {
+        [ToneGenerator.sharedGenerator start];
+        NSLog(@"AVAudioSessionInterruptionOptionShouldResume TRUE");
+    } else {
+        NSLog(@"AVAudioSessionInterruptionOptionShouldResume FALSE");
+    }
 }
 
 @end
