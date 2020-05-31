@@ -72,6 +72,8 @@ static ToneGenerator *sharedGenerator = NULL;
     if (self)
     {
         [self setupEngine];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(start) name:@"ToggleToneBarrierPlayNotification" object:nil];
         //        semaphore = dispatch_semaphore_create(1);
         //        _audioEngine = [[AVAudioEngine alloc] init];
         //        _mixerNode = _audioEngine.mainMixerNode;
@@ -210,8 +212,8 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
 
 - (void)setupEngine
 {
-            _audioEngine = [[AVAudioEngine alloc] init];
-            _mixerNode = _audioEngine.mainMixerNode;
+    _audioEngine = [[AVAudioEngine alloc] init];
+    _mixerNode = _audioEngine.mainMixerNode;
     double sampleRate = [_mixerNode outputFormatForBus:0].sampleRate;
     AVAudioChannelCount channelCount = [_mixerNode outputFormatForBus:0].channelCount;
     _audioFormat = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:sampleRate channels:channelCount];
@@ -221,39 +223,39 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
     ////        [_environmentNode setOutputVolume:1.0];
     ////        [_audioEngine attachNode:_environmentNode];
     //
-            _submixer = [[AVAudioMixerNode alloc] init];
-            [_audioEngine attachNode:_submixer];
+    _submixer = [[AVAudioMixerNode alloc] init];
+    [_audioEngine attachNode:_submixer];
     
-            _reverb = [[AVAudioUnitReverb alloc] init];
-            [_reverb loadFactoryPreset:AVAudioUnitReverbPresetLargeHall];
-            [_reverb setWetDryMix:50];
-            [_audioEngine attachNode:_reverb];
+    _reverb = [[AVAudioUnitReverb alloc] init];
+    [_reverb loadFactoryPreset:AVAudioUnitReverbPresetLargeHall];
+    [_reverb setWetDryMix:50];
+    [_audioEngine attachNode:_reverb];
     
-            _playerOneNode = [[AVAudioPlayerNode alloc] init];
-            [_playerOneNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
-            [_playerOneNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
+    _playerOneNode = [[AVAudioPlayerNode alloc] init];
+    [_playerOneNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
+    [_playerOneNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
     [_playerOneNode setPosition:AVAudioMake3DPoint(0.0, 0.0, 0.0)];
     
-            [_audioEngine attachNode:_playerOneNode];
-            [_audioEngine connect:_playerOneNode to:_submixer format:_audioFormat];
+    [_audioEngine attachNode:_playerOneNode];
+    [_audioEngine connect:_playerOneNode to:_submixer format:_audioFormat];
     
-            _playerTwoNode = [[AVAudioPlayerNode alloc] init];
-            [_playerTwoNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
-            [_playerTwoNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
+    _playerTwoNode = [[AVAudioPlayerNode alloc] init];
+    [_playerTwoNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
+    [_playerTwoNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
     [_playerTwoNode setPosition:AVAudioMake3DPoint(0.0, 0.0, 0.0)];
-            [_audioEngine attachNode:_playerTwoNode];
-            [_audioEngine connect:_playerTwoNode to:_submixer format:_audioFormat];
+    [_audioEngine attachNode:_playerTwoNode];
+    [_audioEngine connect:_playerTwoNode to:_submixer format:_audioFormat];
     
-            [_audioEngine connect:_submixer to:_reverb format:_audioFormat];
-            [_audioEngine connect:_reverb to:_mixerNode format:_audioFormat];
+    [_audioEngine connect:_submixer to:_reverb format:_audioFormat];
+    [_audioEngine connect:_reverb to:_mixerNode format:_audioFormat];
     
     
     
-//            __autoreleasing NSError *error = nil;
-//                    [_audioEngine startAndReturnError:&error];
-//
-//            [[AVAudioSession sharedInstance] setActive:YES error:&error];
-//            [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+    //            __autoreleasing NSError *error = nil;
+    //                    [_audioEngine startAndReturnError:&error];
+    //
+    //            [[AVAudioSession sharedInstance] setActive:YES error:&error];
+    //            [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     
     [_mixerNode setOutputVolume:1.0];
     
@@ -285,8 +287,42 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
     return (error) ? FALSE : TRUE;
 }
 
+- (dispatch_queue_t)audio_buffer_request_concurrent_queue
+{
+    dispatch_queue_t dcq = self->_audio_buffer_request_concurrent_queue;
+    if (!dcq) {
+        dcq = dispatch_queue_create("audio_buffer_request_concurrent_queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
+        self->_audio_buffer_request_concurrent_queue = dcq;
+    }
+    
+    return dcq;
+}
+
+- (dispatch_semaphore_t)audio_buffer_request_lock_semaphore
+{
+    dispatch_semaphore_t dls = self->_audio_buffer_request_lock_semaphore;
+    if (!dls) {
+        dls = dispatch_semaphore_create(0);
+        self->_audio_buffer_request_lock_semaphore = dls;
+    }
+    
+    return dls;
+}
+
 - (void)start
 {
+    // To skip past reconfiguration of the AVAudioSession (and all that goes with it),
+    // count the number of "waits" for the audio buffer request lock semaphore;
+    // if the count is greater than one, signal the semaphore and play the tone barrier score;
+    // else, dispatch a semaphore "wait" synchronously
+
+//    if (dispatch_semaphore_signal([self audio_buffer_request_lock_semaphore]) >)
+//    
+//    dispatch_sync([self audio_buffer_request_concurrent_queue], ^{
+//        dispatch_semaphore_wait([self audio_buffer_request_lock_semaphore], DISPATCH_TIME_FOREVER);
+//    });
+    
+    NSLog(@"Received ToggleToneBarrierPlayNotification...");
     if ([_audioEngine isRunning])
     {
         [_audioEngine pause];
@@ -297,6 +333,7 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
         
         [_audioEngine detachNode:_playerTwoNode];
         _playerTwoNode  = nil;
+        
         
         [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
         
@@ -327,27 +364,32 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
             [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
             
             ClicklessTones *tones = [[ClicklessTones alloc] init];
-                        [ToneBarrierPlayer.context setPlayer:(id<ToneBarrierPlayerDelegate> _Nonnull)tones];
-                        [ToneBarrierPlayer.context createAudioBufferWithFormat:_audioFormat completionBlock:^(AudioBuffers * audio_buffers/* AVAudioPCMBuffer * _Nonnull buffer1, AVAudioPCMBuffer * _Nonnull buffer2, */, PlayToneCompletionBlock playToneCompletionBlock) {
-                            // Audio buffers are returned in a struct
-                            [self->_playerOneNode scheduleBuffer:audio_buffers->buffer1 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-            //                    if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
-            //                        playToneCompletionBlock();
-                                // Null the audio buffer to force garbage collection
-                                audio_buffers->buffer1 = nil;
-                            }];
-                            
-                            [self->_playerTwoNode scheduleBuffer:audio_buffers->buffer2 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-                                if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
-                                {
-                                    // Null the audio buffer to force garbage collection
-                                    audio_buffers->buffer2 = nil;
-                                    playToneCompletionBlock();
-                                }
-                                //                NSLog(@"Calling playToneCompletionBlock 2...");
-                            }];
-                            
-                        }];
+            [ToneBarrierPlayer.context setPlayer:(id<ToneBarrierPlayerDelegate> _Nonnull)tones];
+            [ToneBarrierPlayer.context createAudioBufferWithFormat:_audioFormat completionBlock:^(AudioBuffers * audio_buffers/* AVAudioPCMBuffer * _Nonnull buffer1, AVAudioPCMBuffer * _Nonnull buffer2, */, PlayToneCompletionBlock playToneCompletionBlock) {
+                // Audio buffers are returned in a struct
+                [self->_playerOneNode scheduleBuffer:audio_buffers->buffer1 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
+                    //                    if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
+                    //                        playToneCompletionBlock();
+                    // Null the audio buffer to force garbage collection
+                    audio_buffers->buffer1 = nil;
+                }];
+                
+                [self->_playerTwoNode scheduleBuffer:audio_buffers->buffer2 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
+                    if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
+                    {
+                        // Null the audio buffer to force garbage collection
+                        audio_buffers->buffer2 = nil;
+                        
+                        // TO-DO: Put semaphore_wait here
+                        dispatch_async([self audio_buffer_request_concurrent_queue], ^{
+                            playToneCompletionBlock();
+                        });
+                        
+                    }
+                    //                NSLog(@"Calling playToneCompletionBlock 2...");
+                }];
+                
+            }];
         }
     }
 }
@@ -538,16 +580,16 @@ double Envelope(double x, TonalEnvelope envelope)
             
         case TonalEnvelopeLongSustain:
             x_envelope = sinf(x * M_PI) * -sinf(
-                               ((Envelope(x, TonalEnvelopeAverageSustain) - (2.0 * Envelope(x, TonalEnvelopeAverageSustain)))) / 2.0)
+                                                ((Envelope(x, TonalEnvelopeAverageSustain) - (2.0 * Envelope(x, TonalEnvelopeAverageSustain)))) / 2.0)
             * (M_PI / 2.0) * 2.0;
             break;
             
         case TonalEnvelopeShortSustain:
             x_envelope = sinf(x * M_PI) * -sinf(
-                               ((Envelope(x, TonalEnvelopeAverageSustain) - (-2.0 * Envelope(x, TonalEnvelopeAverageSustain)))) / 2.0)
+                                                ((Envelope(x, TonalEnvelopeAverageSustain) - (-2.0 * Envelope(x, TonalEnvelopeAverageSustain)))) / 2.0)
             * (M_PI / 2.0) * 2.0;
             break;
-    
+            
         default:
             break;
     }
@@ -660,12 +702,12 @@ AVAudioPCMBuffer * (^audioBufferFromFrequencies)(Frequencies *, AVAudioFormat *)
         double trill_inverse    = ToneGenerator.TrillInverse(normalized_index, trill_interval);
         double amplitude        = ToneGenerator.Amplitude(normalized_index);
         
-//    int amplitude_frequency = arc4random_uniform(8) + 4;
+        //    int amplitude_frequency = arc4random_uniform(8) + 4;
         if (left_channel) left_channel[index] = ToneGenerator.Frequency(normalized_index, frequencies.frequency1.doubleValue) * amplitude * trill;
         if (right_channel) right_channel[index] = ToneGenerator.Frequency(normalized_index, harmonized_frequency) * amplitude * trill_inverse;
         
-//        if (left_channel)  left_channel[index]  = (NormalizedSineEaseInOut(normalized_index, frequencies.frequency1.doubleValue) * NormalizedSineEaseInOut(normalized_index, amplitude_frequency));
-//        if (right_channel) right_channel[index] = (NormalizedSineEaseInOut(normalized_index, frequencies.frequency2.doubleValue) * NormalizedSineEaseInOut(normalized_index, amplitude_frequency)); // fade((leading_fade == FadeOut) ? FadeIn : leading_fade, normalized_index, (SineEaseInOutFrequency(normalized_index, frequencyRight) * NormalizedSineEaseInOutAmplitude((1.0 - normalized_index), 1)));
+        //        if (left_channel)  left_channel[index]  = (NormalizedSineEaseInOut(normalized_index, frequencies.frequency1.doubleValue) * NormalizedSineEaseInOut(normalized_index, amplitude_frequency));
+        //        if (right_channel) right_channel[index] = (NormalizedSineEaseInOut(normalized_index, frequencies.frequency2.doubleValue) * NormalizedSineEaseInOut(normalized_index, amplitude_frequency)); // fade((leading_fade == FadeOut) ? FadeIn : leading_fade, normalized_index, (SineEaseInOutFrequency(normalized_index, frequencyRight) * NormalizedSineEaseInOutAmplitude((1.0 - normalized_index), 1)));
     }
     
     return pcmBuffer;
@@ -678,7 +720,7 @@ void (^scheduleBuffers)(AVAudioPlayerNode *, AVAudioPlayerNode *, AVAudioFormat 
     // Pass it to the audio buffer block
     // Use
     
-//    AVAudioTime *time = [[AVAudioTime alloc] initWithHostTime:CMClockConvertHostTimeToSystemUnits(CMClockGetTime(CMClockGetHostTimeClock()))];
+    //    AVAudioTime *time = [[AVAudioTime alloc] initWithHostTime:CMClockConvertHostTimeToSystemUnits(CMClockGetTime(CMClockGetHostTimeClock()))];
     NSArray<NSArray<Frequencies *> *> *score = (NSArray<NSArray<Frequencies *> *> *)[NSArray arrayWithArray:scoreFrequenciesPairs()];
     for (NSUInteger index = 0; index < score.count; index++)  // (NSArray<Frequencies *> *frequencyPair in score)
     {
@@ -687,7 +729,7 @@ void (^scheduleBuffers)(AVAudioPlayerNode *, AVAudioPlayerNode *, AVAudioFormat 
             NSLog(@"%lu Played frequencies (1st): %f\t%f\t%f", index, frequencyPair.firstObject.frequency1.doubleValue, frequencyPair.firstObject.frequency2.doubleValue, [AVAudioTime secondsForHostTime:[frequencyPair.firstObject.time hostTime]]);
         }];
         [playerNode2 scheduleBuffer:audioBufferFromFrequencies([frequencyPair lastObject], audioFormat) atTime:[[frequencyPair lastObject] time] options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-           NSLog(@"%lu Played frequencies (2nd): %f\t%f\t%f", index, frequencyPair.lastObject.frequency1.doubleValue, frequencyPair.lastObject.frequency2.doubleValue, [AVAudioTime secondsForHostTime:[frequencyPair.lastObject.time hostTime]]);
+            NSLog(@"%lu Played frequencies (2nd): %f\t%f\t%f", index, frequencyPair.lastObject.frequency1.doubleValue, frequencyPair.lastObject.frequency2.doubleValue, [AVAudioTime secondsForHostTime:[frequencyPair.lastObject.time hostTime]]);
         }];
     }
 };
@@ -1002,22 +1044,6 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
 //        generateTones(self->_playerTwoNode);
 //    }
 //}
-
-- (void)stop
-{
-    //    dispatch_source_cancel(self->_timer);
-    //    self->_timer = nil;
-    //    dispatch_async(dispatch_get_main_queue(), ^{
-    //    [self->_playerOneNode stop];
-    //    [self->_playerTwoNode stop];
-    if (self.audioEngine.isRunning == YES) [self->_audioEngine pause];
-    //        [self.playerOneNode reset];
-    //        [self.playerTwoNode reset];
-    
-    
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
-    //    });
-}
 
 @end
 

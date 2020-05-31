@@ -57,8 +57,9 @@ typedef void (^CreateAudioBufferCompletionBlock)(AudioBuffers * audio_buffers, /
 
 @property (nonatomic, readonly) AVAudioPlayerNode * _Nullable playerOneNode;
 @property (nonatomic, readonly) AVAudioPlayerNode * _Nullable playerTwoNode;
-@property (copy) void (^block)(void);
-@property (strong, nonatomic) dispatch_queue_t tone_serial_queue;
+
+@property (strong, nonatomic) dispatch_queue_t audio_buffer_request_concurrent_queue;
+@property (strong, nonatomic) dispatch_semaphore_t audio_buffer_request_lock_semaphore;
 
 
 

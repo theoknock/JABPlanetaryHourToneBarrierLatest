@@ -109,6 +109,8 @@ double (^fade)(Fade, double, double) = ^double(Fade fadeType, double x, double f
         AudioBuffers * audio_buffers = malloc(sizeof(AudioBuffers));
         audio_buffers->buffer1 = createAudioBuffer((Fade)self->alternate_channel_flag, (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency), (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency));
         audio_buffers->buffer2 = createAudioBuffer((Fade)self->alternate_channel_flag, (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency), (((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency));
+        
+        // TO-DO: 
         createAudioBufferCompletionBlock(audio_buffers, ^{
 //        createAudioBufferCompletionBlock(createAudioBuffer((Fade)self->alternate_channel_flag, [self->_distributor nextInt]/*(((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency)*/, [_distributor nextInt] /*(((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency)*/), createAudioBuffer((Fade)self->alternate_channel_flag, [_distributor nextInt] /*(((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency)*/, [_distributor nextInt] /*(((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency)*/), ^{
 //            NSLog(@"alternate_channel_flag == %ld", (long)self->alternate_channel_flag);

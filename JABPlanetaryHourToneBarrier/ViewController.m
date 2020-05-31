@@ -576,6 +576,21 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 //2020-05-30 12:28:21.707686-0400 JABPlanetaryHourToneBarrier[1585:269519] Resuming playback...
 //2020-05-30 12:28:21.707756-0400 JABPlanetaryHourToneBarrier[1585:269519] AVAudioSessionInterruptionOptionShouldResume TRUE
 
+
+// TO-DO: Block requests for audio buffers using a semaphore_wait in for the AVAudioSessionInterruptionTypeBegan interruption type;
+//        signal the semaphore for the AVAudioSessionInterruptionTypeEnded interruption type
+//        (user interaction signals any blocking semaphores).
+//        This solves the problem caused by pausing the AVAudioSession to stop playing the tone barrier score,
+//        which stops AVAudioSessionInterruptionNotifications
+
+
+// The consumer dispatches a request for an audio buffer to a synchronous (serial) queue
+// In the AVAudioSession interruption handler for the type, AVAudioSessionInterruptionTypeBegan,
+// Dispatch a fencing block to the consumer-request queue using dispatch_barrier_async;
+// inside the block, suspend the queue with a dispatch_semaphore_wait.
+// In the AVAudioSession interruption handler for the type, AVAudioSessionInterruptionTypeEnded,
+// resume the queue with a dispatch_semaphore_signal.
+
 - (void)handleInterruption:(NSNotification *)notification
 {
     UInt8 interruptionType = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
@@ -584,37 +599,60 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
     if (interruptionType == AVAudioSessionInterruptionTypeBegan)
     {
         NSLog(@"AVAudioSessionInterruptionTypeBegan");
-        if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
-        {
-            float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
-            [ToneGenerator.sharedGenerator start]; // This method is called on the main thread--the same thread on which this
-                                                   // entire method runs; calling it will block the main thread and
-                                                   // preventing its execution to complete
-                                                   // ALTERNATIVE: Send a "toggle tone barrier generator" notification
-                                                   // that calls [ToneGenerator.sharedGenerator start];
-                                                   // that way, the two methods are called sequentially (vs. concurrently)
-            [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
-        }
-    } else if (interruptionType == AVAudioSessionInterruptionTypeEnded)
+        dispatch_sync([ToneGenerator.sharedGenerator audio_buffer_request_concurrent_queue], ^{
+            dispatch_semaphore_wait([ToneGenerator.sharedGenerator audio_buffer_request_lock_semaphore], DISPATCH_TIME_FOREVER);
+        });
+    } else if (interruptionType == AVAudioSessionInterruptionTypeEnded) // AVAudioSessionInterruptionTypeEnded will not occur if the user responds to tne phone call in some way, whether they accept or refuse a call
     {
         NSLog(@"AVAudioSessionInterruptionTypeEnded");
-        if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
-        {
-            float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
-            [ToneGenerator.sharedGenerator start];
-            [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
-        }
-    }
-    
-    AVAudioSessionInterruptionOptions options = [[notification.userInfo valueForKey:AVAudioSessionInterruptionOptionKey] intValue];
-    if (options == AVAudioSessionInterruptionOptionShouldResume)
-    {
-        [ToneGenerator.sharedGenerator start];
-        NSLog(@"AVAudioSessionInterruptionOptionShouldResume TRUE");
-    } else {
-        NSLog(@"AVAudioSessionInterruptionOptionShouldResume FALSE");
+        dispatch_semaphore_signal([ToneGenerator.sharedGenerator audio_buffer_request_lock_semaphore]);
     }
 }
+
+
+//- (void)handleInterruption:(NSNotification *)notification
+//{
+//    UInt8 interruptionType = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
+//    NSLog(@"%s\n\n\t\t\tinterruptionType == %d\n\n%f\n\n", __PRETTY_FUNCTION__, interruptionType, ToneGenerator.sharedGenerator.mixerNode.outputVolume);
+//
+//    if (interruptionType == AVAudioSessionInterruptionTypeBegan)
+//    {
+//        NSLog(@"AVAudioSessionInterruptionTypeBegan");
+//        if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
+//        {
+//            NSLog(@"Posting ToggleToneBarrierPlayNotification...");
+//            float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
+//            [[NSNotificationCenter defaultCenter] postNotificationName:@"ToggleToneBarrierPlayNotification" object:nil userInfo:nil];
+////            [ToneGenerator.sharedGenerator start]; // This method is called on the main thread--the same thread on which this
+//                                                   // entire method runs; calling it will block the main thread and
+//                                                   // preventing its execution to complete
+//                                                   // ALTERNATIVE: Send a "toggle tone barrier generator" notification
+//                                                   // that calls [ToneGenerator.sharedGenerator start];
+//                                                   // that way, the two methods are called sequentially (vs. concurrently)
+//            [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
+//        }
+//    } else if (interruptionType == AVAudioSessionInterruptionTypeEnded) // AVAudioSessionInterruptionTypeEnded will not occur if the user responds to tne phone call in some way, whether they accept or refuse a call
+//    {
+//        NSLog(@"AVAudioSessionInterruptionTypeEnded");
+//        if (ToneGenerator.sharedGenerator.mixerNode.outputVolume != 0.0)
+//        {
+//            NSLog(@"Posting ToggleToneBarrierPlayNotification...");
+//            float output_volume = ToneGenerator.sharedGenerator.mixerNode.outputVolume;
+//            [[NSNotificationCenter defaultCenter] postNotificationName:@"ToggleToneBarrierPlayNotification" object:nil userInfo:nil];
+////            [ToneGenerator.sharedGenerator start];
+//            [ToneGenerator.sharedGenerator.mixerNode setOutputVolume:output_volume];
+//        }
+//    }
+//
+//    AVAudioSessionInterruptionOptions options = [[notification.userInfo valueForKey:AVAudioSessionInterruptionOptionKey] intValue];
+//    if (options == AVAudioSessionInterruptionOptionShouldResume)
+//    {
+//        [ToneGenerator.sharedGenerator start];
+//        NSLog(@"AVAudioSessionInterruptionOptionShouldResume TRUE");
+//    } else {
+//        NSLog(@"AVAudioSessionInterruptionOptionShouldResume FALSE");
+//    }
+//}
 
 @end
 
