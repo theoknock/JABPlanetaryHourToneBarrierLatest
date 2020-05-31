@@ -2,7 +2,7 @@
 //  ViewController.m
 //  JABPlanetaryHourToneBarrier
 //
-//  Created by Xcode Developer on 7/8/19.
+//  Created by James Alan Bush on 7/8/19.
 //  Copyright © 2019 The Life of a Demoniac. All rights reserved.
 //
 
@@ -584,12 +584,9 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 //        which stops AVAudioSessionInterruptionNotifications
 
 
-// The consumer dispatches a request for an audio buffer to a synchronous (serial) queue
-// In the AVAudioSession interruption handler for the type, AVAudioSessionInterruptionTypeBegan,
-// Dispatch a fencing block to the consumer-request queue using dispatch_barrier_async;
-// inside the block, suspend the queue with a dispatch_semaphore_wait.
-// In the AVAudioSession interruption handler for the type, AVAudioSessionInterruptionTypeEnded,
-// resume the queue with a dispatch_semaphore_signal.
+// The audio buffer request queue is fenced by dispatch_sync and blocked by dispatch_semaphore_wait when an
+// active audio session is interrupted by, say, a phone call;
+// When the interruption ends, a dispatch_semaphore_signal restarts the cycle of producing and consuming audio buffers.
 
 - (void)handleInterruption:(NSNotification *)notification
 {
