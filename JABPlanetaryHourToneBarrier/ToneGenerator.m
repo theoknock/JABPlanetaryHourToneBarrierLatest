@@ -314,10 +314,10 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
     // To skip past reconfiguration of the AVAudioSession (and all that goes with it),
     // count the number of "waits" for the audio buffer request lock semaphore;
     // if the count is greater than one, signal the semaphore and play the tone barrier score;
-    // else, dispatch a semaphore "wait" synchronously
+    // else, dispatch a semaphore "wait" synchronously.
 
 //    if (dispatch_semaphore_signal([self audio_buffer_request_lock_semaphore]) >)
-//    
+//
 //    dispatch_sync([self audio_buffer_request_concurrent_queue], ^{
 //        dispatch_semaphore_wait([self audio_buffer_request_lock_semaphore], DISPATCH_TIME_FOREVER);
 //    });
