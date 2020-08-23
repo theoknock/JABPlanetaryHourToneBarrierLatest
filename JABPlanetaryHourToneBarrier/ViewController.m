@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 #import "ViewController.h"
-#import "ToneGenerator.h"
+#import "ToneBarrierGenerator.h"
 #import "AppDelegate.h"
 #import "GraphView.h"
 
@@ -346,7 +346,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
       @"UIDeviceBatteryStateDidChangeNotification"      : @(batteryState(device)),
       @"NSProcessInfoPowerStateDidChangeNotification"   : @(powerState()),
       @"AVAudioSessionRouteChangeNotification"          : @(audioRoute()),
-      @"ToneBarrierPlayingNotification"                 : @([ToneGenerator.sharedGenerator.audioEngine isRunning])};
+      @"ToneBarrierPlayingNotification"                 : @([ToneBarrierGenerator.sharedGenerator.audioEngine isRunning])};
     
     return status;
 };
@@ -506,8 +506,8 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 
 - (IBAction)toggleToneGenerator:(UIButton *)sender
 {
-    [ToneGenerator.sharedGenerator play];
-    [sender setImage:([ToneGenerator.sharedGenerator.audioEngine isRunning]) ? [UIImage systemImageNamed:@"stop"] : [UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
+    [ToneBarrierGenerator.sharedGenerator play];
+    [sender setImage:([ToneBarrierGenerator.sharedGenerator.audioEngine isRunning]) ? [UIImage systemImageNamed:@"stop"] : [UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
 //    [self updateDeviceStatus];
 }
 

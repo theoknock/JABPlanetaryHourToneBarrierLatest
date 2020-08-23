@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17147" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17154" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_1" orientation="portrait" appearance="dark"/>
     <dependencies>
-        <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17120"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17124"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -58,7 +57,7 @@
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </stackView>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="03A-I8-G2v" userLabel="PlayButton">
-                                <rect key="frame" x="166.5" y="407.5" width="81.5" height="91"/>
+                                <rect key="frame" x="166" y="407.5" width="82" height="91"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <state key="normal" image="play" catalog="system">
                                     <preferredSymbolConfiguration key="preferredSymbolConfiguration" configurationType="pointSize" pointSize="96" scale="medium" weight="thin"/>
@@ -109,9 +108,9 @@
     <resources>
         <image name=" " width="128" height="128"/>
         <image name="battery.0" catalog="system" width="128" height="61"/>
-        <image name="bolt.slash" catalog="system" width="98" height="128"/>
-        <image name="heart.slash" catalog="system" width="128" height="112"/>
-        <image name="play" catalog="system" width="116" height="128"/>
+        <image name="bolt.slash" catalog="system" width="95" height="128"/>
+        <image name="heart.slash" catalog="system" width="128" height="115"/>
+        <image name="play" catalog="system" width="120" height="128"/>
         <image name="thermometer" catalog="system" width="93" height="128"/>
         <image name="wave.3.backward" catalog="system" width="84" height="128"/>
         <image name="wave.3.forward" catalog="system" width="84" height="128"/>

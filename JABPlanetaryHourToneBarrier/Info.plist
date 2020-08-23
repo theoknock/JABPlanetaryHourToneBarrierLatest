@@ -68,6 +68,6 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>kTCCServiceMediaLibrary</key>
-	<string>Play the tone barrier while the device is locked</string>
+	<string>App plays the tone barrier while the device is locked</string>
 </dict>
 </plist>

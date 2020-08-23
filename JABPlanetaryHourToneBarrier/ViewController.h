@@ -15,7 +15,7 @@
 #import <HealthKit/HealthKit.h>
 
 #import "AppDelegate.h"
-#import "ToneGenerator.h"
+#import "ToneBarrierGenerator.h"
 
 #define low_bound   300.0f
 #define high_bound 4000.0f

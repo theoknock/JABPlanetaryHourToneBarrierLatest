@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "ToneGenerator.h"
+#import "ToneBarrierGenerator.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

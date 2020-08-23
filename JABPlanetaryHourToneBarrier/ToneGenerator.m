@@ -19,6 +19,52 @@
 #include "easing.h"
 
 
+
+struct frequencies_struct
+{
+    int frequencies_array_length;
+    double * frequencies_array;
+    __unsafe_unretained id flag;
+};
+
+typedef enum : NSUInteger {
+    StereoChannelOutputLeft,
+    StereoChannelOutputRight
+} StereoChannelOutput;
+
+
+struct stereo_channel_struct
+{
+    StereoChannelOutput stereo_channel_output;
+    struct frequencies_struct * stereo_channels_frequencies;
+    __unsafe_unretained id flag;
+};
+
+struct stereo_channels_list
+{
+    struct stereo_channel_struct * stereoChannels;
+    __unsafe_unretained id flag;
+};
+
+// compare to AudioBuffer
+typedef struct stereo_channel
+{
+    StereoChannelOutput stereo_channel_output;
+    Frequencies frequencies;                    // compare to AudioFormatListItem.mASBD (AudioStreamBasicDescription)
+    AVAudioFramePosition index_start;
+    AVAudioFrameCount samples_count;
+    float * __nullable samples;                 // pointer to AVAudioPCMBuffer.floatChannelData[0...1]
+} StereoChannel;
+
+// compare to AudioBufferList
+typedef struct stereo_channel_list
+{
+    AVAudioFrameCount frame_capacity;
+    AVAudioChannelCount channel_count;          // compare to AudioBufferList.mNumberBuffers
+    StereoChannel * channels[1];                  // compare to AudioBufferList.mBuffers (AudioBuffer)
+} StereoChannelList;
+
+
 @interface ToneGenerator ()
 
 @property (nonatomic, strong) AVAudioMixerNode * _Nullable  mainNode;
@@ -26,10 +72,49 @@
 @property (nonatomic, strong) AVAudioFormat * _Nullable     audioFormat;
 @property (nonatomic, strong) AVAudioUnitReverb * _Nullable reverb;
 
+@property (nonatomic, readonly) struct frequencies_struct * (^frequencies)(int frequencies_array_length, double * frequencies_array, __unsafe_unretained id flag);
+@property (nonatomic, readonly) struct stereo_channels_struct * (^stereo_channels)(struct frequencies_struct * stereo_channels_frequencies, __unsafe_unretained id flag);
+
 
 @end
 
 @implementation ToneGenerator
+
+- (struct frequencies_struct * (^)(int, double *, __unsafe_unretained id))frequencies
+{
+   return ^struct frequencies_struct * (int frequencies_array_length,
+                                       double * frequencies_array,
+                                       __unsafe_unretained id flag)
+    {
+        struct frequencies_struct * frequencies = malloc(sizeof(struct frequencies_struct));
+        frequencies->frequencies_array_length = frequencies_array_length;
+        frequencies->frequencies_array = malloc(sizeof(double) * frequencies_array_length);
+        for (int i = 0; i < frequencies_array_length; i++)
+        {
+            frequencies->frequencies_array[i] = frequencies_array[i];
+        }
+        frequencies->flag = flag;
+        
+        return frequencies;
+    };
+}
+
+- (struct stereo_channels_struct * (^)(struct frequencies_struct *, __unsafe_unretained id))stereo_channels
+{
+    return ^struct stereo_channels_struct * (struct frequencies_struct * stereo_channels_frequencies, __unsafe_unretained id flag)
+    {
+        struct stereo_channels_struct * stereo_channels = malloc(sizeof(struct stereo_channels_struct) + (sizeof(frequencies) * 2));
+        stereo_channels->stereo_channels_frequencies = malloc(sizeof(struct frequencies_struct) * 2);
+        for (int i = 0; i < 2; i++)
+        {
+            stereo_channels->stereo_channels_frequencies[i] = stereo_channels_frequencies[i];
+        }
+        
+        stereo_channels->flag = flag;
+        
+        return stereo_channels;
+    };
+}
 
 static ToneGenerator *sharedGenerator = NULL;
 + (nonnull ToneGenerator *)sharedGenerator
@@ -330,50 +415,30 @@ double (^envelope_lfo)(double, double) = ^(double time, double slope)
     return env_lfo;
 };
 
-typedef struct frequencies
+typedef struct frequencies_array_struct
 {
     int length;
-    double * __nullable frequencies_array;             // Frequencies.frequencies = malloc(Frequencies.frequency_count * sizeof(double));
+    double * frequencies_array;             // Frequencies.frequencies = malloc(Frequencies.frequency_count * sizeof(double));
 } Frequencies;
 
-Frequencies * (^createFrequenciesArray)(int, double, double) = ^ Frequencies * (int frequency_count, double root_frequency, double duration)
+static Frequencies * (^frequencies)(int length, double * frequencies_array);
+
+
+
+void (^initFrequenciesArray)(Frequencies * , int, double, double) = ^ void (Frequencies * frequencies_struct, int frequency_count, double root_frequency, double duration)
 {
-    Frequencies * frequencies_struct = (Frequencies *)malloc(sizeof(Frequencies));
+    frequencies_struct = (Frequencies *)malloc(sizeof(Frequencies));
     frequencies_struct->length = frequency_count;
-    frequencies_struct->frequencies_array = (double *)malloc(sizeof(float) * frequency_count);
+    frequencies_struct->frequencies_array = (double *)calloc(frequency_count, sizeof(double));
     
-    double * frequencies = calloc(frequency_count, sizeof(double));
+    double harmonic_increment = root_frequency - (root_frequency * (5.0/4.0));
     for (int i = 0; i < frequency_count; i++)
     {
-        frequencies[i] = (root_frequency * (i * (5.0/4.0)) * duration);
+        frequencies_struct->frequencies_array[i] = (root_frequency + (i * harmonic_increment)) * duration;
     }
-    
-    return frequencies_struct;
 };
 
-typedef enum : NSUInteger
-{
-    StereoChannelOutputLeft,
-    StereoChannelOutputRight
-} StereoChannelOutput;
 
-// compare to AudioBuffer
-typedef struct stereo_channel
-{
-    StereoChannelOutput stereo_channel_output;
-    Frequencies frequencies;                    // compare to AudioFormatListItem.mASBD (AudioStreamBasicDescription)
-    AVAudioFramePosition index_start;
-    AVAudioFrameCount samples_count;
-    float * __nullable samples;                 // pointer to AVAudioPCMBuffer.floatChannelData[0...1]
-} StereoChannel;
-
-// compare to AudioBufferList
-typedef struct stereo_channel_list
-{
-    AVAudioFrameCount frame_capacity;
-    AVAudioChannelCount channel_count;          // compare to AudioBufferList.mNumberBuffers
-    StereoChannel * channels[1];                  // compare to AudioBufferList.mBuffers (AudioBuffer)
-} StereoChannelList;
 
 //StereoChannelList * (^createStereoChannelList)(AVAudioFrameCount, AVAudioChannelCount, float * const *) = ^StereoChannelList * (AVAudioFrameCount frame_capacity,
 //                                                                                                                                                 AVAudioChannelCount channel_count,
@@ -386,7 +451,7 @@ typedef struct stereo_channel_list
 //        StereoChannel * stereoChannel = (StereoChannel *)malloc(sizeof(StereoChannel));
 //        stereoChannel->stereo_channel_output = (StereoChannelOutput)channel;
 //        stereoChannel->samples = channel_samples[channel];
-//        
+//
 //        Frequencies * frequencies = (Frequencies *)malloc(sizeof(Frequencies) + sizeof(float));
 //        int frequency_count = 2;
 //        float * frequencies_arr = malloc(frequency_count * sizeof(float));
@@ -396,10 +461,10 @@ typedef struct stereo_channel_list
 //        }
 //        frequencies->frequencies = frequencies_arr;
 //        stereoChannel->frequencies = *frequencies;
-//        
+//
 //        stereoChannelList->channels[channel] = stereoChannel;
 //    }
-//    
+//
 //    return stereoChannelList;
 //};
 
@@ -495,13 +560,13 @@ typedef struct stereo_channel_list
 //}
 
 //void (^calculateChannelData)(AVAudioFrameCount, double, double, double, float *) = ^(AVAudioFrameCount sampleCount, double frequency, double duration, double outputVolume, float * samples)
-void (^calculateChannelData)(AVAudioFrameCount, Frequencies *, double, double, float *) = ^(AVAudioFrameCount sampleCount, Frequencies * frequencies, double duration, double outputVolume, float * samples)
+void (^calculateChannelData)(AVAudioFrameCount, struct frequencies_struct *, double, double, float *) = ^(AVAudioFrameCount sampleCount, struct frequencies_struct * frequencies, double duration, double outputVolume, float * samples)
 {
     for (int index = 0; index < sampleCount; index++)
     {
         double normalized_time = normalize(0.0, 1.0, index, 0.0, sampleCount);
         double frequency_sum   = 0.0;
-        for (int i = 0; i < frequencies->length; i++)
+        for (int i = 0; i < frequencies->frequencies_array_length; i++)
         {
             frequency_sum += sinf(2.0 * M_PI * normalized_time * frequencies->frequencies_array[i]);
         }
@@ -525,15 +590,26 @@ static void(^createAudioBuffer)(AVAudioSession *, AVAudioFormat *, CreateAudioBu
         double tone_split = randomize(0.0, 1.0, 1.0);
         double device_volume = pow(audioSession.outputVolume, 3.0);
         
-        Frequencies *frequencies = createFrequenciesArray(2, 440, duration);
+        ToneGenerator *tg = [ToneGenerator sharedGenerator];
+        double root_frequency = 440.0 * duration;
+        double frequencies_params[] = {root_frequency, root_frequency * (5.0/4.0)};
+        struct frequencies_struct * frequencies_struct_left     = tg.frequencies(2, frequencies_params, nil);
+        struct frequencies_struct * frequencies_struct_right    = tg.frequencies(2, frequencies_params, nil);
+        struct frequencies_struct * frequencies_struct_array[2] = {frequencies_struct_left, frequencies_struct_right};
+        
+        struct stereo_channels_struct *stereo_channels = tg.stereo_channels(frequencies_struct_array, nil);
+                                                          
+        
+
+        
         calculateChannelData(pcmBuffer.frameLength,
-                             frequencies,
+                             frequencies_struct_left,
                              tone_split,
                              device_volume,
                              pcmBuffer.floatChannelData[0]);
         
         calculateChannelData(pcmBuffer.frameLength,
-                             frequencies,
+                             frequencies_struct_right,
                              tone_split,
                              device_volume,
                              ([audioFormat channelCount] == 2) ? pcmBuffer.floatChannelData[1] : nil);
@@ -574,6 +650,7 @@ static void(^createAudioBuffer)(AVAudioSession *, AVAudioFormat *, CreateAudioBu
         [self.audioEngine stop];
     } else {
         [self setupEngine];
+        
         self.playerNode = [[AVAudioPlayerNode alloc] init];
         [self.playerNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
         [self.playerNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
@@ -614,6 +691,7 @@ static void(^createAudioBuffer)(AVAudioSession *, AVAudioFormat *, CreateAudioBu
 }
 
 @end
+
 
 
 

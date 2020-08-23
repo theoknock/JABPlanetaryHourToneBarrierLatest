@@ -8,7 +8,7 @@
 
 #import "AppDelegate.h"
 #import <BackgroundTasks/BackgroundTasks.h>
-#import "ToneGenerator.h"
+#import "ToneBarrierGenerator.h"
 
 @interface AppDelegate ()
 {
